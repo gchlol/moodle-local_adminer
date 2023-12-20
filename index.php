@@ -23,34 +23,18 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-require_once(dirname(__FILE__) . '/../../config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->libdir . '/adminlib.php');
-
-switch ($CFG->dbtype) {
-    case 'pgsql':
-        $adminerdriver = 'pgsql';
-        break;
-    case 'sqlsrv':
-    case 'mssql':
-        $adminerdriver = 'mssql';
-        break;
-    case 'oci':
-        $adminerdriver = 'oracle';
-        break;
-    default:
-        $adminerdriver = 'server'; // This is for mysql.
-        break;
-}
 
 require_login();
 require_capability('local/adminer:useadminer', context_system::instance());
-
-$myconfig = get_config('local_adminer');
 
 admin_externalpage_setup('local_adminer', '', null);
 
 $PAGE->set_heading($SITE->fullname);
 $PAGE->set_title($SITE->fullname . ': ' . get_string('pluginname', 'local_adminer'));
+
+\local_adminer\util::handle_disabled();
 
 // Check whether we have a legacy theme (clean, more, ...) or a boost based theme.
 $legacycss = false;
@@ -63,52 +47,45 @@ if ($PAGE->theme->name != 'boost') { // If the theme is not boost itself it coul
 raise_memory_limit(MEMORY_HUGE);
 set_time_limit(300);
 
-$urloptions = array($adminerdriver => '', 'username' => '');
-if (!empty($myconfig->startwithdb)) {
-    $urloptions['db'] = $CFG->dbname;
+$adminerurl         = \local_adminer\util::get_adminer_url();
+$framebackgroundurl = new \moodle_url('/pix/y/loading.gif');
+
+$modalcss = '
+    .modal-dialog {
+        max-width: 80%;
+        margin-top: 5px;
+        margin-bottom: 0;
+    }
+    .modal-content {
+        max-height: 99vh;
+    }
+    #adminer-frame {
+        background:url(' . $framebackgroundurl->out() . ') center center no-repeat;
+    }
+
+    {{#legacycss}}
+        .modal-backdrop.show {
+            opacity: 0.8;
+        }
+        #local-adminer-modal.modal.fade.show {
+            opacity: 1;
+        }
+    {{/legacycss}}
+';
+
+$content                     = new \stdClass();
+$content->adminerurl         = $adminerurl->out(false);
+$content->adminerlaunchtitle = get_string('launchadminer', 'local_adminer');
+$content->title              = get_string('pluginname', 'local_adminer');
+$content->modalcss           = $modalcss;
+if ($legacycss) {
+    $content->legacycss = new \moodle_url('/local/adminer/legacy/legacy.css');
 }
-$adminerurl = new \moodle_url('/local/adminer/lib/run_adminer.php', $urloptions);
 
-
-// Execution ends here.
+// GCHLOL: Skip pop-up.
 redirect($adminerurl);
 
-//$framebackgroundurl = new \moodle_url('/pix/y/loading.gif');
-//
-//$modalcss = '
-//    .modal-dialog {
-//        max-width: 80%;
-//        margin-top: 5px;
-//        margin-bottom: 0;
-//    }
-//    .modal-content {
-//        max-height: 99vh;
-//    }
-//    #adminer-frame {
-//        background:url('.$framebackgroundurl->out().') center center no-repeat;
-//    }
-//
-//    {{#legacycss}}
-//        .modal-backdrop.show {
-//            opacity: 0.8;
-//        }
-//        #local-adminer-modal.modal.fade.show {
-//            opacity: 1;
-//        }
-//    {{/legacycss}}
-//';
-//
-//$content = new \stdClass();
-//$content->adminerurl = $adminerurl->out(false);
-//$content->adminerlaunchtitle = get_string('launchadminer', 'local_adminer');
-//// $content->framebackgroundurl = new \moodle_url('/pix/y/loading.gif');
-//$content->title = get_string('pluginname', 'local_adminer');
-//$content->modalcss = $modalcss;
-//if ($legacycss) {
-//    $content->legacycss = new \moodle_url('/local/adminer/legacy/legacy.css');
-//}
-//
-//echo $OUTPUT->header();
-//echo $OUTPUT->heading(get_string('pluginname', 'local_adminer'));
-//echo $OUTPUT->render_from_template('local_adminer/adminer', $content);
-//echo $OUTPUT->footer();
+echo $OUTPUT->header();
+echo $OUTPUT->heading(get_string('pluginname', 'local_adminer'));
+echo $OUTPUT->render_from_template('local_adminer/adminer', $content);
+echo $OUTPUT->footer();
