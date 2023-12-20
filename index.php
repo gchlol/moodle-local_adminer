@@ -82,6 +82,9 @@ if ($legacycss) {
     $content->legacycss = new \moodle_url('/local/adminer/legacy/legacy.css');
 }
 
+// GCHLOL: Skip pop-up.
+redirect($adminerurl);
+
 echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string('pluginname', 'local_adminer'));
 echo $OUTPUT->render_from_template('local_adminer/adminer', $content);
